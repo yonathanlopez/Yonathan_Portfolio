@@ -18,3 +18,10 @@ Moreno has set a clear goal: Design marketing strategies aimed at converting cas
 This document outlines all of the steps taken to clean and transform Cyclistic’s raw datasets to prepare the data for the next stage of analysis. For the purpose of this case study, only data collected between January 2021 - December 2021 will be assessed. The dataset description can be located [here](https://ride.divvybikes.com/system-data).
 
 Please note that Cyclistic is a fictional company. Raw data has been collected by Motivate International Inc, the company which operates the City of Chicago’s Divvy bicycle sharing service. The license to use this public dataset can be found [here](https://ride.divvybikes.com/data-license-agreement).
+
+** # 1 **
+Combined all 12 data set into one table in Microsoft SQL Server
+
+
+
+
