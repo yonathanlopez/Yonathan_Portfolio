@@ -19,9 +19,8 @@ This document outlines all of the steps taken to clean and transform Cyclisticâ€
 
 Please note that Cyclistic is a fictional company. Raw data has been collected by Motivate International Inc, the company which operates the City of Chicagoâ€™s Divvy bicycle sharing service. The license to use this public dataset can be found [here](https://ride.divvybikes.com/data-license-agreement).
 
-** # 1 **
-Combined all 12 data set into one table in Microsoft SQL Server
-
+# Step Number one : Combined all 12 data set into one table in Microsoft SQL Server
+![alt text](https://github.com/yonathanlopez/Yonathan_Portfolio/blob/main/Images/MergingDataSQL.PNG?raw=true "Logo Title Text 1")
 
 
 
