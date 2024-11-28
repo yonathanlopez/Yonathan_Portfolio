@@ -1,0 +1,248 @@
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+import time
+import pandas as pd
+import pickle
+import os
+import re
+from datetime import datetime, timedelta
+from fuzzywuzzy import fuzz
+
+# Replace 'your_username' and 'your_password' with your actual credentials
+username = 'MyEmail'
+password = 'MyPassword'
+
+# Path to the cookies file
+cookies_file = "T3.pkl"
+
+# Initialize the WebDriver
+driver = webdriver.Chrome()
+
+# Function to log in and save cookies
+def login_and_save_cookies():
+    driver.get("https://app.jointherealworld.com/auth/login")
+    print(driver.title)
+    time.sleep(3)
+    
+    # Find the username/email field and enter the username
+    username_field = driver.find_element(By.ID, "email")
+    username_field.send_keys(username)
+    
+    # Find the password field and enter the password
+    password_field = driver.find_element(By.ID, "password")
+    password_field.send_keys(password)
+    
+    # Submit the form
+    password_field.send_keys(Keys.RETURN)
+    
+    # Give some time for the page to load
+    time.sleep(5)
+    
+    # Check if MFA is required by looking for a specific element
+    try:
+        driver.find_element(By.ID, "mfa_element_id")
+        input("Press Enter after you have manually entered the MFA code and completed the login process...")
+    except:
+        print("MFA not required or already completed.")
+    
+    # Save cookies to a file
+    with open(cookies_file, "wb") as f:
+        pickle.dump(driver.get_cookies(), f)
+
+# Function to load cookies
+def load_cookies():
+    driver.get("https://app.jointherealworld.com/auth/login")
+    with open(cookies_file, "rb") as f:
+        cookies = pickle.load(f)
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+
+# Check if cookies file exists
+if os.path.exists(cookies_file):
+    load_cookies()
+    driver.get("https://app.jointherealworld.com/chat/01GGDHJAQMA1D0VMK8WV22BJJN/01GGQAX5TKPSNT7TNA0P3PCNMD")
+    time.sleep(5)  # Give the page time to load
+    if "Login" in driver.title:  # Check if still logged out
+        print("Session expired. Logging in again...")
+        login_and_save_cookies()
+else:
+    login_and_save_cookies()
+
+# Wait for the chat container to be visible
+chat_container = WebDriverWait(driver, 20).until(
+    EC.visibility_of_element_located((By.CSS_SELECTOR, "div.z-10.overflow-y-auto.overflow-x-hidden.transition-transform.duration-keyboard.will-change-transform"))
+)
+
+# Function to convert timestamp to date
+def convert_timestamp_to_date(timestamp):
+    today = datetime.today()
+    timestamp = timestamp.lower()
+    
+    if "today" in timestamp:
+        return today.date()
+    elif "yesterday" in timestamp:
+        return (today - timedelta(days=1)).date()
+    else:
+        days_of_week = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6
+        }
+        for day, day_num in days_of_week.items():
+            if day in timestamp:
+                days_ago = (today.weekday() - day_num) % 7
+                if days_ago == 0:
+                    days_ago = 7
+                return (today - timedelta(days=days_ago)).date()
+    return None
+
+
+# Function to check similarity and flag messages with exact match handling
+def check_similarity(new_message, existing_messages, new_user_id, threshold=60, max_similarity=99):
+    if new_message == "Unknown Message":  # Exclude "Unknown Message"
+        return "No Message", None
+    
+    for existing_message in existing_messages:
+        # Ensure the user_id matches and check for exact match
+        if existing_message['user_id'] == new_user_id:
+            # Check for exact match first
+            if new_message == existing_message['message']:
+                return "Duplicate", existing_message['url']  # Exact match
+            
+            # Check for similarity in the range [60, 99]
+            similarity_score = fuzz.ratio(new_message, existing_message['message'])
+            if threshold <= similarity_score <= max_similarity:
+                return "Similar", existing_message['url']  # Similarity in the range [60, 99]
+                
+    return "Original", None  # No exact match or similar message found
+
+
+# Function to fetch messages with similarity check
+def fetch_messages(batch_num, num_messages, data, existing_messages, current_id):
+    previous_user_id = None
+    previous_timestamp = None
+
+    # Scroll and load messages
+    for _ in range(num_messages):
+        driver.execute_script("arguments[0].scrollTop -= 1000", chat_container)
+        time.sleep(3)
+
+    time.sleep(5)
+
+    # Get the updated page source after scrolling
+    page_source = driver.page_source
+    soup = BeautifulSoup(page_source, 'html.parser')
+
+    message_sections = soup.findAll("section", attrs={"data-message-id-content": True})
+
+    for section in message_sections:
+        user_id = None
+        message = None
+        timestamp = None
+        message_url = None
+        reactions = []
+        total_reactions = 0
+        
+        # Extract user ID
+        user_id_span = section.find("span", class_="inline-flex items-center cursor-pointer font-medium text-xs hover:underline md:text-sm")
+        user_id = user_id_span.text.strip() if user_id_span else (previous_user_id if previous_user_id else "Unknown User")
+
+        # Extract image URL
+        img_tag = section.find("img", class_="_image_s7ut2_99 relative object-contain")
+        image_src = img_tag["src"] if img_tag and img_tag.has_attr("src") else "No Image Found"
+
+        # Extract profile picture URL
+        # profile_img_tag = section.find("img", class_="ufhsfnkm relative object-contain")
+        # profile_img_src = profile_img_tag["src"] if profile_img_tag and profile_img_tag.has_attr("src") else "No Image Found"
+
+        # Extract message
+        message_p = section.find("p", class_="sc-eqUAAy ikOqZr")
+        message = message_p.text.strip() if message_p else "Unknown Message"
+
+        # Extract timestamp
+        timestamp_span = section.find("span", class_="ml-3 cursor-default pt-[1px] text-3xs opacity-50")
+        timestamp = timestamp_span.text.strip() if timestamp_span else (previous_timestamp if previous_timestamp else "Unknown Timestamp")
+        
+        time_extracted = re.search(r'at (.*)', timestamp, re.IGNORECASE)
+        time_extracted = time_extracted.group(1) if time_extracted else "Unknown Time"
+        
+        previous_user_id = user_id
+        previous_timestamp = timestamp
+
+        if time_extracted == "Unknown Time":
+            time_extracted = previous_timestamp.split('at ')[-1] if previous_timestamp else "Unknown Time"
+
+        # Extract message URL
+        if section.has_attr('data-message-id-content'):
+            message_id = section['data-message-id-content']
+            message_url = f"https://app.jointherealworld.com/chat/01GGDHJAQMA1D0VMK8WV22BJJN/01GGQAX5TKPSNT7TNA0P3PCNMD/{message_id}"
+
+        # Extract reactions
+        reactions_div = section.find("div", class_="mr-[32px] flex flex-wrap gap-1 mt-1")
+        if reactions_div:
+            reaction_buttons = reactions_div.find_all("button")
+            for button in reaction_buttons:
+                emoji_span = button.find("span", {"data-testid": "emoji-img"})
+                count_span = button.find("span", {"class": "ml-[2px] min-w-[3ch] text-xs"})
+                if emoji_span and count_span:
+                    emoji = emoji_span['aria-label']
+                    count = int(count_span.text.strip())
+                    reactions.append(f"{emoji}: {count}")
+                    total_reactions += count
+
+        date = convert_timestamp_to_date(timestamp)
+
+        similarity_flag, similar_message_url = check_similarity(message, existing_messages, user_id, threshold=90)
+
+        data.append({
+            "ID": f"{current_id:03d}",  # ID with leading zeros
+            "User ID": user_id,
+            #"Profile Picture": profile_img_src,
+            "Time Stamp": timestamp,
+            "Time": time_extracted,
+            "Date": date,
+            "Message": message,
+            "Message URL": message_url,
+            "Message Image": image_src,
+            "Reactions": ", ".join(reactions),
+            "Total Reactions": total_reactions,
+            "Similarity Flag": similarity_flag,
+            "Similar Message URL": similar_message_url  # Include URL instead of ID
+        })
+        
+        existing_messages.append({'url': message_url, 'message': message, 'user_id': user_id})
+        current_id += 1
+
+    return data, existing_messages, current_id
+
+# Initialize an empty list to store all message data
+all_data = []
+existing_messages = []  # List to store all fetched messages
+current_id = 1  # Start with ID 1
+
+# Fetch and save each batch of messages
+batches = [
+    (1, 10),  # First batch: 10 messages
+    (2, 18)   # Second batch: 18 messages
+]
+
+# Add the remaining batches with 19 messages each
+batches.extend([(i, 19) for i in range(3,20)])
+
+print(batches)
+
+for batch_num, num_messages in batches:
+    all_data, existing_messages, current_id = fetch_messages(batch_num, num_messages, all_data, existing_messages, current_id)
+
+# Save all data to CSV
+df = pd.DataFrame(all_data)
+df.to_csv("Victories_chat_Data.csv", index=False)
+print(f"Scraping completed! {len(all_data)} messages saved.")
