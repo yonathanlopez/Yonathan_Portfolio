@@ -12,7 +12,7 @@ import re
 from datetime import datetime, timedelta
 from fuzzywuzzy import fuzz
 
-# Replace 'your_username' and 'your_password' with your actual credentials
+# Replace 'MyEmail' and 'MyPassword' with your actual credentials
 username = 'MyEmail'
 password = 'MyPassword'
 
