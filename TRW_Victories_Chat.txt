@@ -215,7 +215,8 @@ def fetch_messages(batch_num, num_messages, data, existing_messages, current_id)
             "Reactions": ", ".join(reactions),
             "Total Reactions": total_reactions,
             "Similarity Flag": similarity_flag,
-            "Similar Message URL": similar_message_url  # Include URL instead of ID
+            "Similar Message URL": similar_message_url
+
         })
         
         existing_messages.append({'url': message_url, 'message': message, 'user_id': user_id})
