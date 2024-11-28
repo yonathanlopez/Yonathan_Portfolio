@@ -1,0 +1,341 @@
+DEFINE
+
+    MEASURE 'LastRefresh'[LastUpdated] = var ts = max(LastRefresh[Column1])
+
+ 
+
+RETURN
+
+ 
+
+CONCATENATE("DATA LAST REFRESHED: ",ts)
+
+    MEASURE 'LastRefresh'[DateTime] = MAX(LastRefresh[Column1])
+
+    MEASURE 'DimDate'[vDateRangeSelected] = VAR StartDate = FIRSTDATE('DimDate'[Date])
+
+VAR EndDate = MAX('DimDate'[Date])
+
+VAR Display = IF (StartDate = EndDate, "DATE SELECTED ( " & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) & " ) : " & StartDate, "DATE RANGE SELECTED ( " & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) & " ) : " & StartDate & " - " & EndDate )
+
+RETURN
+
+Display
+
+    MEASURE 'DimDate'[vDisplayDriverSummary] = VAR StartDate = FIRSTDATE('DimDate'[Date])
+
+VAR EndDate = MAX('DimDate'[Date])
+
+VAR Display = IF (StartDate = EndDate, "SUMMARY BY DRIVER ( " & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) & " ) : " & StartDate, "SUMMARY BY DRIVER ( "  & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) &  " ) : " & StartDate & " - " & EndDate )
+
+RETURN
+
+Display
+
+    MEASURE 'DimDate'[vDisplayMonthSummary] = VAR StartDate = FIRSTDATE('DimDate'[Date])
+
+VAR EndDate = MAX('DimDate'[Date])
+
+VAR Display = IF (StartDate = EndDate, "SUMMARY BY MONTH ( " & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) & " ) : " & StartDate, "SUMMARY BY MONTH ( " & SELECTEDVALUE('CalculationGroup'[PreDeterminedDates]) & " ) : " & StartDate & " - " & EndDate )
+
+RETURN
+
+Display
+
+    MEASURE 'DimDate'[vQualitySurvey_SnapShotDateDisplay] = VAR StartDate = FIRSTDATE(SurveyHeader[ScheduledDate])
+
+VAR EndDate = MAX(SurveyHeader[ScheduledDate])
+
+VAR Display = IF (StartDate = EndDate, "DATE DISPLAYED : " & StartDate, "DATES DISPLAYED : " & StartDate & " - " & EndDate )
+
+RETURN
+
+Display
+
+    MEASURE 'DimDate'[vDrillThroughDisplayDate] = VAR StartDate = FIRSTDATE(SurveyHeader[ScheduledDate])
+
+VAR EndDate = MAX(SurveyHeader[ScheduledDate])
+
+VAR Display = IF (StartDate = EndDate, "DELIVERY DATE : " & StartDate, "DELIVERY DATE RANGE : " & StartDate & " - " & EndDate )
+
+RETURN
+
+Display
+
+    MEASURE 'DimDate'[Info] = BLANK()
+
+    MEASURE 'DimDate'[vDisplayedUser] = VAR Driver = ALLSELECTED(SurveyHeader[DriverName])
+
+VAR Display = CONCATENATE("USER : ", Driver)
+
+RETURN
+
+Display
+
+    MEASURE 'SurveyHeader'[SurveySentCount] = DISTINCTCOUNT(SurveyHeader[Sys_Id])
+
+    MEASURE 'SurveyHeader'[PiecesCount] = SUM(SurveyHeader[TotalPieces])
+
+    MEASURE 'SurveyHeader'[ClaimsCount] = SUM(SurveyHeader[ClaimCount])
+
+    MEASURE 'SurveyHeader'[Finished%] = DIVIDE([FinishedCount],[SurveySentCount])
+
+    MEASURE 'SurveyHeader'[FinishedCount] = IF (
+
+    HASONEVALUE(SurveyHeader[DeliveryStatus]),
+
+    IF (
+
+        SELECTEDVALUE(SurveyHeader[DeliveryStatus]) = "Finished",
+
+        CALCULATE(
+
+            [SurveySentCount],
+
+            SurveyHeader[DeliveryStatus] = "Finished"
+
+        ),
+
+        0
+
+    ),
+
+    CALCULATE(
+
+        [SurveySentCount],
+
+        SurveyHeader[DeliveryStatus] = "Finished"
+
+    )
+
+)
+
+    MEASURE 'SurveyHeader'[AllExchangeCount] = CALCULATE([SurveySentCount],SurveyHeader[OrderType] = "Exchange")
+
+    MEASURE 'SurveyHeader'[FinishedExchange%] = DIVIDE([FinishedExchangeCount],[AllExchangeCount])
+
+    MEASURE 'SurveyHeader'[OnTime%] = DIVIDE([OnTimeCount],[SurveySentCount])
+
+    MEASURE 'SurveyHeader'[NTClaimsCount] = CALCULATE([ClaimsCount], SurveyHeader[ClaimType] = "NT")
+
+    MEASURE 'SurveyHeader'[NTClaims%] = DIVIDE([NTClaimsCount],[SurveySentCount])
+
+    MEASURE 'SurveyHeader'[FDClaimsCount] = CALCULATE([ClaimsCount], SurveyHeader[ClaimType] = "FD")
+
+    MEASURE 'SurveyHeader'[FDClaims%] = DIVIDE([FDClaimsCount],[SurveySentCount])
+
+    MEASURE 'SurveyHeader'[Response%] = DIVIDE(SurveyAnswers[SurveysAnsweredCount],[SurveySentCount])
+
+    MEASURE 'SurveyHeader'[OnTimeCount] = IF (
+
+    HASONEVALUE(SurveyHeader[OnTime]),
+
+    IF (
+
+        SELECTEDVALUE(SurveyHeader[OnTime]) = "On Time",
+
+        CALCULATE(
+
+            [SurveySentCount],
+
+            SurveyHeader[OnTime] = "On Time"
+
+        ),
+
+        0
+
+    ),
+
+    CALCULATE(
+
+        [SurveySentCount],
+
+        SurveyHeader[OnTime] = "On Time"
+
+    )
+
+) + 0
+
+    MEASURE 'SurveyHeader'[FinishedExchangeCount] = CALCULATE([AllExchangeCount],SurveyHeader[DeliveryStatus] = "Finished")+0
+
+    MEASURE 'SurveyHeader'[RoutesCount] = DISTINCTCOUNT(SurveyHeader[ScheduledDate_Route_Concat])
+
+    MEASURE 'SurveyHeader'[DT_URL] = SELECTEDVALUE(SurveyHeader[DispatchTrackUrl])
+
+    MEASURE 'SurveyAnswers'[SurveysAnsweredCount] = DISTINCTCOUNT(SurveyAnswers[Sys_Id])+0
+
+    MEASURE 'SurveyAnswers'[AverageSurveyScore] = ROUND(AVERAGE(SurveyAnswers[SurveyScore]),4)
+
+    MEASURE 'SurveyAnswers'[Satisfied%] = DIVIDE([SatisfiedCount],SurveyAnswers[SurveysAnsweredCount])
+
+    MEASURE 'SurveyAnswers'[SatisfiedCount] = CALCULATE(SurveyAnswers[SurveysAnsweredCount],SurveyAnswers[Satisfied] = "Yes")+0
+
+    MEASURE 'SurveyAnswers'[SurveyedExchangeSatisfied%] = DIVIDE(CALCULATE([SurveyedExchangeCount],SurveyAnswers[Satisfied] = "Yes"),[SurveyedExchangeCount])
+
+    MEASURE 'SurveyAnswers'[SurveyedExchangeCount] = CALCULATE([SurveysAnsweredCount], SurveyAnswers[OrderTypeEx] = "Exchange")+0
+
+    MEASURE 'SurveyAnswers'[QualitySurveyGauge] = [Satisfied%]*100
+
+    MEASURE 'SurveyAnswers'[CourteousRating] = AVERAGEX(FILTER(SurveyAnswers, SurveyAnswers[Courteous] <> 0), SurveyAnswers[Courteous])
+
+    MEASURE 'SurveyAnswers'[CurrentDateVsPreviousDate] = ROUND([AverageSurveyScore]-[PreviousDateSurveyScore],4)
+
+    MEASURE 'SurveyAnswers'[Font/IconColor] = VAR vPositive = IF([CurrentDateVsPreviousDate] > .0,1,0)
+
+VAR vNegative = IF([CurrentDateVsPreviousDate] < .0,1,0)
+
+ 
+
+RETURN
+
+SWITCH(TRUE(),vPositive = 1, "Green", vNegative = 1, "Red", "Gray")
+
+    MEASURE 'SurveyAnswers'[PreviousDateSurveyScore] = VAR LastNonBlankDate =
+
+    CALCULATE(
+
+        MAX('DimDate'[Date]),
+
+        FILTER(
+
+            ALL('DimDate'),
+
+            'DimDate'[Date] < MAX('DimDate'[Date]) &&
+
+            'DimDate'[DateSort] <= 6 &&
+
+            [AverageSurveyScore] > 0
+
+        )
+
+    )
+
+RETURN
+
+    CALCULATE(
+
+        [AverageSurveyScore],
+
+        'DimDate'[Date] = LastNonBlankDate
+
+    )
+
+    MEASURE 'SurveyAnswers'[PreviousDateSurveyScoreIcon] = VAR Down = "▼"
+
+    VAR Up =  "▲"
+
+    VAR Side =  "►"
+
+    VAR vEmpty = ""
+
+    RETURN
+
+       IF([CurrentDateVsPreviousDate] < .000, Down, IF([CurrentDateVsPreviousDate] > .001, Up, vEmpty))
+
+    MEASURE 'SurveyAnswers'[ProductHandlingRating] = AVERAGEX(FILTER(SurveyAnswers, SurveyAnswers[ProductHandling] <> 0), SurveyAnswers[ProductHandling])
+
+    MEASURE 'SurveyAnswers'[TimeFrameRating] = AVERAGEX(FILTER(SurveyAnswers, SurveyAnswers[TimeFrame] <> 0), SurveyAnswers[TimeFrame])
+
+    MEASURE 'CalculationGroup'[HideDateSlicerFlag] = IF(SELECTEDVALUE('CalculationGroup'[Ordinal]) = 8, 1, 0 )
+
+    MEASURE 'DimDeliveryIssues'[SumofDamagedPieces] = CALCULATE(SUM(DimDeliveryIssues[DamagedPieces]), CROSSFILTER(SurveyHeader[OrderandDateKey],DimDeliveryIssues[OrderNumberKey], Both))
+
+    MEASURE 'DimDeliveryIssues'[SumofNotOnTruck] = CALCULATE(SUM(DimDeliveryIssues[NotOnTruck]), CROSSFILTER(SurveyHeader[OrderandDateKey],DimDeliveryIssues[OrderNumberKey], Both))
+
+    MEASURE 'DimDeliveryIssues'[SumofWrongPiecesOnTruck] = CALCULATE(SUM(DimDeliveryIssues[WrongPiecesOnTruck]), CROSSFILTER(SurveyHeader[OrderandDateKey],DimDeliveryIssues[OrderNumberKey], Both))
+
+ 
+
+EVALUATE
+
+    SUMMARIZECOLUMNS(
+
+        "LastUpdated", 'LastRefresh'[LastUpdated],
+
+        "DateTime", 'LastRefresh'[DateTime],
+
+        "vDateRangeSelected", 'DimDate'[vDateRangeSelected],
+
+        "vDisplayDriverSummary", 'DimDate'[vDisplayDriverSummary],
+
+        "vDisplayMonthSummary", 'DimDate'[vDisplayMonthSummary],
+
+        "vQualitySurvey_SnapShotDateDisplay", 'DimDate'[vQualitySurvey_SnapShotDateDisplay],
+
+        "vDrillThroughDisplayDate", 'DimDate'[vDrillThroughDisplayDate],
+
+        "Info", 'DimDate'[Info],
+
+        "vDisplayedUser", 'DimDate'[vDisplayedUser],
+
+        "SurveySentCount", 'SurveyHeader'[SurveySentCount],
+
+        "PiecesCount", 'SurveyHeader'[PiecesCount],
+
+        "ClaimsCount", 'SurveyHeader'[ClaimsCount],
+
+        "Finished%", 'SurveyHeader'[Finished%],
+
+        "FinishedCount", 'SurveyHeader'[FinishedCount],
+
+        "AllExchangeCount", 'SurveyHeader'[AllExchangeCount],
+
+        "FinishedExchange%", 'SurveyHeader'[FinishedExchange%],
+
+        "OnTime%", 'SurveyHeader'[OnTime%],
+
+        "NTClaimsCount", 'SurveyHeader'[NTClaimsCount],
+
+        "NTClaims%", 'SurveyHeader'[NTClaims%],
+
+        "FDClaimsCount", 'SurveyHeader'[FDClaimsCount],
+
+        "FDClaims%", 'SurveyHeader'[FDClaims%],
+
+        "Response%", 'SurveyHeader'[Response%],
+
+        "OnTimeCount", 'SurveyHeader'[OnTimeCount],
+
+        "FinishedExchangeCount", 'SurveyHeader'[FinishedExchangeCount],
+
+        "RoutesCount", 'SurveyHeader'[RoutesCount],
+
+        "DT_URL", 'SurveyHeader'[DT_URL],
+
+        "SurveysAnsweredCount", 'SurveyAnswers'[SurveysAnsweredCount],
+
+        "AverageSurveyScore", 'SurveyAnswers'[AverageSurveyScore],
+
+        "Satisfied%", 'SurveyAnswers'[Satisfied%],
+
+        "SatisfiedCount", 'SurveyAnswers'[SatisfiedCount],
+
+        "SurveyedExchangeSatisfied%", 'SurveyAnswers'[SurveyedExchangeSatisfied%],
+
+        "SurveyedExchangeCount", 'SurveyAnswers'[SurveyedExchangeCount],
+
+        "QualitySurveyGauge", 'SurveyAnswers'[QualitySurveyGauge],
+
+        "CourteousRating", 'SurveyAnswers'[CourteousRating],
+
+        "CurrentDateVsPreviousDate", 'SurveyAnswers'[CurrentDateVsPreviousDate],
+
+        "Font/IconColor", 'SurveyAnswers'[Font/IconColor],
+
+        "PreviousDateSurveyScore", 'SurveyAnswers'[PreviousDateSurveyScore],
+
+        "PreviousDateSurveyScoreIcon", 'SurveyAnswers'[PreviousDateSurveyScoreIcon],
+
+        "ProductHandlingRating", 'SurveyAnswers'[ProductHandlingRating],
+
+        "TimeFrameRating", 'SurveyAnswers'[TimeFrameRating],
+
+        "HideDateSlicerFlag", 'CalculationGroup'[HideDateSlicerFlag],
+
+        "SumofDamagedPieces", 'DimDeliveryIssues'[SumofDamagedPieces],
+
+        "SumofNotOnTruck", 'DimDeliveryIssues'[SumofNotOnTruck],
+
+        "SumofWrongPiecesOnTruck", 'DimDeliveryIssues'[SumofWrongPiecesOnTruck]
+
+    )
